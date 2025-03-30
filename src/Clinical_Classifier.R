@@ -297,7 +297,7 @@ ggsurvplot(
     pval = TRUE,
     risk.table = TRUE,
     title = "Kaplan-Meier Survival Curves (Knowles Cohort)",
-    xlab = "Time (days)",
+    xlab = "Time (months)",
     ylab = "Recurrence-Free Survival Probability"
 )
 
