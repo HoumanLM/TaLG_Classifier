@@ -8,8 +8,7 @@ library(caret)
 library(limma)         
 library(sva)           
 library(plsRcox)
-library(pROC)
-library(timeROC)
+
 
 
 # Load data
@@ -219,6 +218,7 @@ median_score <- quantile(uromol_data_aligned$risk_score, probs = 0.22)
 uromol_data_aligned$risk_group <- ifelse(risk_scores > median_score, "High", "Low")
 
 ### Performance matrices
+# Kaplan-Meier curve
 km_fit <- survfit(Surv(RFS_time, Recurrence) ~ risk_group, data = uromol_data_aligned)
 ggsurvplot(
     km_fit,
@@ -229,6 +229,8 @@ ggsurvplot(
     xlab = "Time (months)",
     ylab = "Recurrence-Free Survival Probability"
 )
+
+# c-index
 c_index_train <- concordance.index(
     x = risk_scores,
     surv.time = uromol_data_aligned$RFS_time,
@@ -237,7 +239,12 @@ c_index_train <- concordance.index(
 )
 cat("UROMOL Cohort c-index:", c_index_train$c.index, "\n")
 
-
+# Confusion matrix
+conf_matrix_train <- confusionMatrix(
+    factor(uromol_data_aligned$risk_group, levels = c("Low", "High")),
+    factor(ifelse(uromol_data_aligned$Recurrence == 1, "High", "Low"), levels = c("Low", "High"))
+)
+print(conf_matrix_train)
 
 
 
@@ -293,17 +300,29 @@ ggsurvplot(
     xlab = "Time (days)",
     ylab = "Recurrence-Free Survival Probability"
 )
+
+# c-index
+df_cindex <- data.frame(
+    score = risk_scores_knowles,
+    time = knowles_data_aligned$RFS_time,
+    event = knowles_data_aligned$Recurrence
+)
+# Remove rows with any NAs
+df_cindex <- df_cindex[complete.cases(df_cindex), ]
+# Compute c-index
 c_index_knowles <- concordance.index(
-    x = risk_scores_knowles,
-    surv.time = knowles_data_aligned$RFS_time,
-    surv.event = knowles_data_aligned$Recurrence,
+    x = df_cindex$score,
+    surv.time = df_cindex$time,
+    surv.event = df_cindex$event,
     method = "noether"
 )
 cat("Knowles Cohort c-index:", c_index_knowles$c.index, "\n")
 
-actual_uromol <- uromol_data_aligned$Recurrence  # ground truth (binary)
-roc_uromol <- roc(actual_uromol, risk_scores)
+# Confusion matrix
+conf_matrix_knowles <- confusionMatrix(
+    factor(knowles_data_aligned$risk_group, levels = c("Low", "High")),
+    factor(ifelse(knowles_data_aligned$Recurrence == 1, "High", "Low"), levels = c("Low", "High"))
+)
+print(conf_matrix_knowles)
 
-# Show AUC
-cat("AUC (UROMOL):", auc(roc_uromol), "\n")
 
